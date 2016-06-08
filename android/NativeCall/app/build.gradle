@@ -6,7 +6,7 @@ android {
     useLibrary 'org.apache.http.legacy'
     defaultConfig {
         applicationId "com.ericsson.research.owr.examples.nativecall"
-        minSdkVersion 14
+        minSdkVersion 19
         targetSdkVersion 23
         versionCode 1
         versionName "1.0"
@@ -25,6 +25,8 @@ android {
 
 dependencies {
 //    See settings.gradle for local dev instructions
-//    compile project(':openwebrtc-sdk')
-    compile 'io.openwebrtc:openwebrtc-android-sdk:0.1.0'
+    compile 'io.openwebrtc:openwebrtc-android:0.3'
+    compile project(':openwebrtc-sdk')
+//    compile 'io.openwebrtc:openwebrtc-android-sdk:0.1.0'
+//    compile project(':openwebrtc-android-sdk')
 }

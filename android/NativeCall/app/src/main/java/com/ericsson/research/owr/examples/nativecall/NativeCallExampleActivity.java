@@ -60,8 +60,7 @@ import com.ericsson.research.owr.sdk.VideoView;
 import org.json.JSONException;
 import org.json.JSONObject;
 
-import java.io.IOException;
-import java.io.UnsupportedEncodingException;
+import java.util.Locale;
 
 public class NativeCallExampleActivity extends Activity implements
         SignalingChannel.JoinListener,
@@ -129,7 +128,7 @@ public class NativeCallExampleActivity extends Activity implements
             TextureView selfView = (TextureView) findViewById(R.id.self_view);
             TextureView remoteView = (TextureView) findViewById(R.id.remote_view);
             selfView.setVisibility(running ? View.VISIBLE : View.INVISIBLE);
-            remoteView.setVisibility(running ? View.VISIBLE : View.INVISIBLE);
+            remoteView.setVisibility(View.VISIBLE);
             if (running) {
                 Log.d(TAG, "setting self-view: " + selfView);
                 mSelfView.setView(selfView);
@@ -212,9 +211,11 @@ public class NativeCallExampleActivity extends Activity implements
 
         boolean wantAudio = mAudioCheckBox.isChecked();
         boolean wantVideo = mVideoCheckBox.isChecked();
-        mStreamSet = SimpleStreamSet.defaultConfig(wantAudio, wantVideo);
-        mSelfView = CameraSource.getInstance().createVideoView();
-        mRemoteView = mStreamSet.createRemoteView();
+        mStreamSet = SimpleStreamSet.defaultConfig(true, true);
+        mRemoteView = CameraSource.getInstance().createVideoView();
+        mSelfView = mStreamSet.createRemoteView();
+//        mSelfView = CameraSource.getInstance().createVideoView();
+//        mRemoteView = mStreamSet.createRemoteView();
         updateVideoView(true);
     }
 
@@ -246,17 +247,59 @@ public class NativeCallExampleActivity extends Activity implements
 
     @Override
     public synchronized void onMessage(final JSONObject json) {
-        if (json.has("candidate")) {
+        if (json.has("candidate") && json.optJSONObject("candidate") != null) {
             JSONObject candidate = json.optJSONObject("candidate");
             Log.v(TAG, "candidate: " + candidate);
-            RtcCandidate rtcCandidate = RtcCandidates.fromJsep(candidate);
+            RtcCandidate rtcCandidate;
+            if ((candidate.optString("candidate") == null || candidate.optString("candidate").isEmpty())
+                    && candidate.optJSONObject("candidateDescription") != null) {
+                JSONObject desc = candidate.optJSONObject("candidateDescription");
+                /*
+                "candidateDescription":{
+                   "port":62742,"foundation":"0","type":"host","address":"192.168.0.7",
+                    "transport":"UDP","componentId":2,"priority":2122252542
+                }
+                 */
+                try {
+                    String foundation = desc.getString("foundation");
+                    String type = desc.getString("type");
+                    String address = desc.getString("address");
+                    String transport = desc.getString("transport");
+                    int componentId = desc.getInt("componentId");
+                    int port = desc.getInt("port");
+                    long priority = desc.getLong("priority");
+                    String relatedAddress = desc.optString("relatedAddress");
+                    int relatedPort = desc.optInt("relatedPort", -1);
+                    String relative =
+                            relatedAddress != null && relatedPort > 0
+                                    ? String.format(Locale.ENGLISH, " raddr %s rport %d", relatedAddress, relatedPort)
+                            : "";
+                    String cl = String.format(Locale.ENGLISH, "candidate:%s %d %s %d %s %d typ %s%s\r\n",
+                            foundation, componentId, transport, priority, address, port, type, relative);
+                    candidate.put("candidate", cl);
+                } catch (JSONException e) {
+                    Log.e(TAG, "unable to parse candidate desc", e);
+                }
+            }
+            rtcCandidate = RtcCandidates.fromJsep(candidate);
             if (rtcCandidate != null) {
                 mRtcSession.addRemoteCandidate(rtcCandidate);
             } else {
                 Log.w(TAG, "invalid candidate: " + candidate);
             }
         }
-        if (json.has("sdp")) {
+        if (json.has("sessionDescription")) {
+            try {
+                SessionDescription sessionDescription = SessionDescriptions.fromSessionDescription(json);
+                if (sessionDescription.getType() == SessionDescription.Type.OFFER) {
+                    onInboundCall(sessionDescription);
+                } else {
+                    onAnswer(sessionDescription);
+                }
+            } catch (InvalidDescriptionException e) {
+                e.printStackTrace();
+            }
+        } else if (json.has("sdp") && json.optJSONObject("sdp") != null) {
             JSONObject sdp = json.optJSONObject("sdp");
             Log.v(TAG, "sdp: " + sdp);
             try {
@@ -335,8 +378,10 @@ public class NativeCallExampleActivity extends Activity implements
         Toast.makeText(this, "Disconnected from server", Toast.LENGTH_LONG).show();
         updateVideoView(false);
         mStreamSet = null;
-        mRtcSession.stop();
-        mRtcSession = null;
+        if (mRtcSession != null) {
+            mRtcSession.stop();
+            mRtcSession = null;
+        }
         mSignalingChannel = null;
     }
 
@@ -363,13 +408,13 @@ public class NativeCallExampleActivity extends Activity implements
         mHeader.setVisibility(View.VISIBLE);
         mHeader.animate()
                 .rotationX(-SETTINGS_ANIMATION_ANGLE)
-                .setDuration(SETTINGS_ANIMATION_DURATION)
-                .withEndAction(new Runnable() {
-                    @Override
-                    public void run() {
-                        mHeader.setVisibility(View.INVISIBLE);
-                    }
-                }).start();
+                .setDuration(SETTINGS_ANIMATION_DURATION).start();
+//                .withEndAction(new Runnable() {
+//                    @Override
+//                    public void run() {
+//                        mHeader.setVisibility(View.INVISIBLE);
+//                    }
+//                }).start();
     }
 
     private void hideSettings() {
@@ -380,13 +425,13 @@ public class NativeCallExampleActivity extends Activity implements
         mSettingsHeader.setVisibility(View.VISIBLE);
         mSettingsHeader.animate()
                 .rotationX(-SETTINGS_ANIMATION_ANGLE)
-                .setDuration(SETTINGS_ANIMATION_DURATION)
-                .withEndAction(new Runnable() {
-                    @Override
-                    public void run() {
-                        mSettingsHeader.setVisibility(View.INVISIBLE);
-                    }
-                }).start();
+                .setDuration(SETTINGS_ANIMATION_DURATION).start();
+//                .withEndAction(new Runnable() {
+//                    @Override
+//                    public void run() {
+//                        mSettingsHeader.setVisibility(View.INVISIBLE);
+//                    }
+//                }).start();
     }
 
     private void saveUrl(final String url) {

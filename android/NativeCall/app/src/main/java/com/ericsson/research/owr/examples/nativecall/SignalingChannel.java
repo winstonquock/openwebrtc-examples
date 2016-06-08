@@ -36,6 +36,7 @@ import org.apache.http.client.methods.HttpGet;
 import org.apache.http.client.methods.HttpPost;
 import org.apache.http.entity.ByteArrayEntity;
 import org.apache.http.impl.client.DefaultHttpClient;
+import org.apache.http.params.CoreConnectionPNames;
 import org.json.JSONException;
 import org.json.JSONObject;
 
@@ -87,7 +88,9 @@ public class SignalingChannel {
         new Thread(new Runnable() {
             @Override
             public void run() {
-                HttpClient httpClient = new DefaultHttpClient();
+                DefaultHttpClient httpClient = new DefaultHttpClient();
+                httpClient.getParams().setParameter(CoreConnectionPNames.CONNECTION_TIMEOUT, 90000);
+                httpClient.getParams().setParameter(CoreConnectionPNames.SO_TIMEOUT, 90000);
                 HttpGet httpGet = new HttpGet(mServerToClientUrl);
 
                 try {

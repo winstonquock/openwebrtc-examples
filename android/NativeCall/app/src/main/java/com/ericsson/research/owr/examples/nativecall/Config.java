@@ -30,7 +30,12 @@ public class Config {
         Changing this does not take effect until app user data is cleared or the app is uninstalled.
         The server address can be configured inside the application by pressing the icon in the top right.
      */
+//    public static final String DEFAULT_SERVER_ADDRESS = "https://10.72.44.111:8443";
+//    public static final String DEFAULT_SERVER_ADDRESS = "http://lit-oasis-65534.herokuapp.com";
+//    public static final String DEFAULT_SERVER_ADDRESS = "http://10.150.225.244:8000";
+//    public static final String DEFAULT_SERVER_ADDRESS = "http://192.168.0.7";
     public static final String DEFAULT_SERVER_ADDRESS = "http://demo.openwebrtc.org";
 
+//    public static final String STUN_SERVER = "stun3.l.google.com:19302";
     public static final String STUN_SERVER = "mmt-stun.verkstad.net";
 }
